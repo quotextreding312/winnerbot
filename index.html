@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Winnerbot - High Accuracy</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+        body { background-color: #0b0e14; color: #fff; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+        .bot-card { background: #151a23; border: 1px solid #232a36; border-radius: 16px; padding: 25px; width: 100%; max-width: 420px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .header { text-align: center; margin-bottom: 20px; }
+        .header h1 { color: #00e676; font-size: 24px; }
+        .header p { color: #848e9c; font-size: 12px; margin-top: 4px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; font-size: 13px; color: #848e9c; margin-bottom: 6px; }
+        select { width: 100%; padding: 12px; background: #1e232d; border: 1px solid #2b313a; border-radius: 8px; color: #fff; font-size: 15px; outline: none; }
+        .btn-start { width: 100%; padding: 14px; background: linear-gradient(45deg, #00e676, #00b0ff); border: none; border-radius: 8px; color: #000; font-size: 16px; font-weight: bold; cursor: pointer; }
+        .dashboard { margin-top: 20px; background: #1e232d; border-radius: 10px; padding: 15px; border: 1px solid #2b313a; }
+        .stat-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; color: #b7bdc6; }
+        .stat-value { color: #fff; font-weight: 600; }
+        .signal-box { text-align: center; padding: 15px; background: #151a23; border-radius: 8px; margin-top: 15px; border: 1px dashed #363d4a; }
+        .signal-title { font-size: 11px; color: #848e9c; text-transform: uppercase; }
+        .signal-text { font-size: 20px; font-weight: bold; margin-top: 5px; color: #ffeb3b; }
+        .accuracy-badge { display: inline-block; background: rgba(0, 230, 118, 0.1); color: #00e676; font-size: 11px; padding: 4px 8px; border-radius: 4px; margin-top: 8px; }
+    </style>
+</head>
+<body>
+
+<div class="bot-card">
+    <div class="header">
+        <h1>⚡ WINNERBOT ACCURACY PRO</h1>
+        <p>Binance Real-Time Engine (0s Delay)</p>
+    </div>
+
+    <div class="form-group">
+        <label for="assetSelect">Quotex Live Crypto Pairs:</label>
+        <select id="assetSelect">
+            <option value="BTCUSDT">BTC / USDT</option>
+            <option value="ETHUSDT">ETH / USDT</option>
+            <option value="SOLUSDT">SOL / USDT</option>
+            <option value="BNBUSDT">BNB / USDT</option>
+            <option value="XRPUSDT">XRP / USDT</option>
+            <option value="ADAUSDT">ADA / USDT</option>
+            <option value="DOGEUSDT">DOGE / USDT</option>
+            <option value="LINKUSDT">LINK / USDT</option>
+        </select>
+    </div>
+
+    <button class="btn-start" onclick="fetchSignal()">SCAN HIGH-ACCURACY SIGNAL</button>
+
+    <div class="dashboard">
+        <div class="stat-row">
+            <span>RSI (14):</span>
+            <span class="stat-value" id="rsiVal">--</span>
+        </div>
+        <div class="stat-row">
+            <span>Main Trend (EMA 200):</span>
+            <span class="stat-value" id="trendVal">--</span>
+        </div>
+        
+        <div class="signal-box">
+            <div class="signal-title">Filtered Signal</div>
+            <div class="signal-text" id="signalText">WAITING...</div>
+            <div class="accuracy-badge">Strict Filter: Trend + Oversold/Overbought</div>
+        </div>
+    </div>
+</div>
+
+<script>
+async function fetchSignal() {
+    const symbol = document.getElementById('assetSelect').value;
+    const signalElem = document.getElementById('signalText');
+    const rsiElem = document.getElementById('rsiVal');
+    const trendElem = document.getElementById('trendVal');
+    
+    signalElem.innerText = "ANALYZING 200 CANDLES...";
+    signalElem.style.color = "#ffeb3b";
+
+    const targetUrl = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1m&limit=200`;
+    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
+
+    try {
+        let response = await fetch(proxyUrl);
+        if (!response.ok) response = await fetch(targetUrl);
+        const data = await response.json();
+        const closePrices = data.map(c => parseFloat(c[4]));
+
+        const currentPrice = closePrices[closePrices.length - 1];
+        const rsi = calculateRSI(closePrices, 14);
+        const ema200 = calculateEMA(closePrices, 200);
+
+        rsiElem.innerText = rsi.toFixed(1);
+        
+        const isUpTrend = currentPrice > ema200;
+        trendElem.innerText = isUpTrend ? "BULLISH (UP)" : "BEARISH (DOWN)";
+        trendElem.style.color = isUpTrend ? "#00e676" : "#ff5252";
+
+        // Filter Logic: Trend-র সাথে মিলিয়ে শুধুমাত্র কনফার্মড সিগন্যাল দেবে
+        if (rsi <= 28 && isUpTrend) {
+            signalElem.innerText = "STRONG CALL (BUY) ⬆️";
+            signalElem.style.color = "#00e676";
+        } else if (rsi >= 72 && !isUpTrend) {
+            signalElem.innerText = "STRONG PUT (SELL) ⬇️";
+            signalElem.style.color = "#ff5252";
+        } else {
+            signalElem.innerText = "NO SAFE TRADE (WAIT) ⏳";
+            signalElem.style.color = "#848e9c";
+        }
+
+    } catch (error) {
+        signalElem.innerText = "ERROR FETCHING DATA";
+        signalElem.style.color = "#f44336";
+    }
+}
+
+function calculateRSI(prices, period = 14) {
+    let gains = 0, losses = 0;
+    for (let i = 1; i <= period; i++) {
+        const diff = prices[i] - prices[i - 1];
+        if (diff >= 0) gains += diff;
+        else losses -= diff;
+    }
+    let avgGain = gains / period;
+    let avgLoss = losses / period;
+
+    for (let i = period + 1; i < prices.length; i++) {
+        const diff = prices[i] - prices[i - 1];
+        if (diff >= 0) {
+            avgGain = (avgGain * 13 + diff) / 14;
+            avgLoss = (avgLoss * 13) / 14;
+        } else {
+            avgGain = (avgGain * 13) / 14;
+            avgLoss = (avgLoss * 13 - diff) / 14;
+        }
+    }
+    return 100 - (100 / (1 + (avgGain / (avgLoss || 1))));
+}
+
+function calculateEMA(prices, period) {
+    const k = 2 / (period + 1);
+    let ema = prices[0];
+    for (let i = 1; i < prices.length; i++) {
+        ema = (prices[i] * k) + (ema * (1 - k));
+    }
+    return ema;
+}
+</script>
+
+</body>
+</html>
